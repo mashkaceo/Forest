@@ -1,4 +1,6 @@
+import java.util.Arrays;
 public class MemoryBenchmark {
+    private static Object measuredForest;
     private static final int TREE_COUNT = 200_000;
 
     private static final String[] MATERIALS = {
@@ -52,15 +54,63 @@ public class MemoryBenchmark {
 
         return forest;
     }
-    public static void main(String[] args) {
-        HeavyTree[] heavyForest = createHeavyForest();
-        System.out.println("Тяжёлых деревьев: " + heavyForest.length);
-        heavyForest[0].draw();
-        heavyForest[199999].draw();
+    public static long usedMemory() {
+        Runtime runtime = Runtime.getRuntime();
+        return runtime.totalMemory() - runtime.freeMemory();
+    }
 
-        Tree[] lightForest = createLightForest();
-        System.out.println("Лёгких деревьев: " + lightForest.length);
-        lightForest[0].draw();
-        lightForest[199999].draw();
+    public static long measureForest(boolean heavy) {
+        measuredForest = null;
+        System.gc();
+        long before = usedMemory();
+
+        if (heavy) {
+            measuredForest = createHeavyForest();
+        } else {
+            measuredForest = createLightForest();
+        }
+
+        System.gc();
+        long after = usedMemory();
+
+        return after - before;
+    }
+
+    public static void main(String[] args) {
+        long[] heavyResults = new long[3];
+        long[] lightResults = new long[3];
+
+        for (int i = 0; i < 3; i++) {
+            heavyResults[i] = measureForest(true);
+            lightResults[i] = measureForest(false);
+
+            System.out.printf(
+                    "Повтор %d: тяжёлый — %.2f МиБ, лёгкий — %.2f МиБ%n",
+                    i + 1,
+                    heavyResults[i] / (1024.0 * 1024.0),
+                    lightResults[i] / (1024.0 * 1024.0)
+            );
+        }
+
+        Arrays.sort(heavyResults);
+        Arrays.sort(lightResults);
+
+        long heavyMedian = heavyResults[1];
+        long lightMedian = lightResults[1];
+
+        System.out.printf(
+                "Медиана тяжёлого леса: %.2f МиБ%n",
+                heavyMedian / (1024.0 * 1024.0)
+        );
+
+        System.out.printf(
+                "Медиана лёгкого леса: %.2f МиБ%n",
+                lightMedian / (1024.0 * 1024.0)
+        );
+
+        System.out.printf(
+                "Лёгкий лес занимает в %.2f раза меньше памяти%n",
+                (double) heavyMedian / lightMedian
+        );
     }
 }
